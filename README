@@ -1,1 +1,27 @@
-The baseline aligner is the Dice's coefficient aligner provided with the assignment.
+The two documents used for creating alignments are called align and combine. They are both python programs.
+
+The aligner works by running IBM 1 for a specified number of iterations. The output of that is passed to
+a simplified HMM model, which estimates Viterbi alignments and optimizes parameters along those alignments.
+Only alignment parameters are re-estimated; translation probabilities are left unchanged from the IBM 1 step.
+
+To use them together, run something like the following example:
+
+./align -i 5 -k 3 > fe_alignment
+./align -i 5 -k 3 -f e -e f > ef_alignment
+./combine -f fe_alignment -e ef_alignment > final_alignment
+
+The most important flags for align are:
+-i : number of iterations for which to run IBM 1
+-k : number of iterations for which to run HMM
+-n : number of sentences to process
+
+The most important flags for combine are:
+-f : file with the f2e alignments
+-e : file with the e2f alignments
+-t : type of alignment. This is one of:
+	- reverse (invert the e2f alignments and print those)
+	- intersect 
+	- union
+	- grow_diag (no final step)
+	- grow_diag_final
+
