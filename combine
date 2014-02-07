@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+
+## This code was modified from the aligner available at 
+## https://github.com/callison-burch/dreamt.git
+
+import optparse
+import sys
+import os
+import time
+from collections import defaultdict
+import string
+
+optparser = optparse.OptionParser()
+optparser.add_option("-e", "--english", dest="ef", default="ef_align", help="English to foreign alignment")
+optparser.add_option("-f", "--french", dest="fe", default="fe_align", help="Foreign to English alignment")
+optparser.add_option("-t", "--type", dest="type", default="grow_diag_true", help="Foreign to English alignment")
+(opts, _) = optparser.parse_args()
+
+pairs = [[a.strip().split() for a in pair] for pair in zip(open(opts.fe), open(opts.ef))]
+
+# reverse the e2f translations
+for pair in pairs:
+    for (i, a) in enumerate(pair[1]):
+        (one, two) = a.split('-')
+        pair[1][i] = two + '-' + one
+
+def intersect_pair(pair):
+    return [a for a in pair[0] if a in pair[1]]
+
+def union_pair(pair):
+    return list(set(pair[0] + pair[1]))
+
+def print_intersect():
+    for pair in pairs:
+        for a in intersect_pair(pair): sys.stdout.write(a + ' ')
+        sys.stdout.write('\n')
+
+def print_union():
+    for pair in pairs:
+        for a in union_pair(pair): sys.stdout.write(a + ' ')
+        sys.stdout.write('\n')
+
+def int_conversion(a):
+    split = a.split('-')
+    return (int(split[0]), int(split[1]))
+
+def grow_diag(pair, final = False):
+    int_pair = [[int_conversion(a) for a in direction] for direction in pair]
+    neighborhood = ((-1, 0), (0, -1), (1, 0), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1))
+    alignment = intersect_pair(int_pair)
+    f_aligned = [a[0] for a in alignment]
+    e_aligned = [a[1] for a in alignment]
+    union = union_pair(int_pair)
+    ## f2e gives number of e words
+    en = range(len(int_pair[0]))
+    ## e2f gives number of f words
+    fn = range(len(int_pair[1]))
+    something_added = True
+    while something_added:
+        something_added = False
+        for f in fn:
+            for e in en:
+                if (f, e) in alignment:
+                    for n in neighborhood:
+                        new_f = f + n[0]
+                        new_e = e + n[1]
+                        if ( ((not new_f in f_aligned) and (not new_e in e_aligned)) and
+                             ((new_f, new_e) in union) ):
+                            alignment.append((new_f, new_e))
+                            f_aligned.append(new_f)
+                            e_aligned.append(new_e)
+                            something_added = True
+    if final:
+        for f in fn:
+            for e in en:
+                if ( ((not f in f_aligned) and (not e in e_aligned)) and
+                     ((f, e) in union) ):
+                    alignment.append((f, e))
+                    f_aligned.append(f)
+                    e_aligned.append(e)
+
+    return alignment
+
+def print_grow_diag(final = False):
+    for pair in pairs:
+        for a in grow_diag(pair, final): sys.stdout.write('%i-%i ' % (a[0], a[1]))
+        sys.stdout.write('\n')
+
+def print_reverse():
+    for pair in pairs:
+        for a in pair[1]: sys.stdout.write(a + ' ')
+        sys.stdout.write('\n')
+
+if opts.type == "intersect": print_intersect()
+elif opts.type == "union": print_union()
+elif opts.type == "grow_diag": print_grow_diag(False)
+elif opts.type == "grow_diag_final": print_grow_diag(True)
+elif opts.type == "reverse": print_reverse()
+else: sys.stderr.write("Please provide -t flag of intersect, union, grow_diag, grow_diag_final, or reverse\n")
+
+        
+
+
+
